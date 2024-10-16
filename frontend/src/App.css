@@ -1,0 +1,24 @@
+/* App container styling */
+.App {
+  text-align: center;
+}
+
+/* Styling for the header */
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+}
+
+h1 {
+  font-size: 2.5em;
+  font-weight: bold;
+  margin: 0;
+}
+
+main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh; /* Ensure the form is vertically centered */
+}
