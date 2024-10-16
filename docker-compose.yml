@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Traefik reverse proxy
+  traefik:
+    image: "traefik:v3.0"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"   # Expose port 80 for HTTP
+      - "8080:8080" # Expose port 8080 for Traefik dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - my-network
+
+  # Backend service (Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app  
+      - ./backend/.env:/app/.env 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`backend.local`)"  
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=5000"  
+    networks:
+      - my-network
+
+  # Frontend service (React)
+  frontend:
+    build:
+      context: ./frontend  
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app  
+      - ./frontend/.env:/app/.env 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`frontend.local`)"  
+      - "traefik.http.routers.frontend.entrypoints=web" 
+      - "traefik.http.services.frontend.loadbalancer.server.port=80" 
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    driver: bridge

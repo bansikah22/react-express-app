@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 
 // CORS Configuration
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',  // Allow requests from the frontend
+  origin: process.env.FRONTEND_URL || 'http://localhost:3001' || '*',  // Allow requests from the frontend
   optionsSuccessStatus: 200,
 };
 
