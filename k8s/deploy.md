@@ -15,4 +15,9 @@ kubectl get pods -n ingress-nginx
 kubectl logs ingress-nginx-controller-7c6974c4d8-m8ghr -n ingress-nginx
 kubectl delete pod react-express-app-react-express-app-backend-86d6cb8dcb-h89xn -n dev
 kubectl delete pod ingress-nginx-controller-7c6974c4d8-m8ghr -n ingress-nginx
+##Fix page 404 Not Found error
+curl -I -X OPTIONS http://react-express.local/api/submit ## test cors configuration
+kubectl run -it --rm curl-test --image=curlimages/curl -- sh
+curl -X POST http://react-express-app-backend:5000/api/submit -H "Content-Type: application/json" -d '{"input": "test"}'
+
 ```

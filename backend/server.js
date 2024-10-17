@@ -23,6 +23,7 @@ app.use(express.json());
 
 // Example POST route
 app.post('/api/submit', (req, res) => {
+  console.log('Received POST request:', req.body);
   const { input } = req.body;
   res.json({ message: `Hello, you entered: ${input}` });
 });

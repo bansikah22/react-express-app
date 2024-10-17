@@ -27,7 +27,7 @@ if [ ! -f "./env/dev.env" ]; then
     echo "Creating dev.env..."
     cat <<EOF > ./env/dev.env
 FRONTEND_URL="http://react-express.local"
-API_URL="http://api-express.local"
+API_URL="http://react-express.local/api"
 EOF
 fi
 
@@ -35,7 +35,7 @@ if [ ! -f "./env/prod.env" ]; then
     echo "Creating prod.env..."
     cat <<EOF > ./env/prod.env
 FRONTEND_URL="https://prod-react-express.com"
-API_URL="https://prod-api-express.com"
+API_URL="https://prod-react-express.com/api"
 EOF
 fi
 
@@ -122,10 +122,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "app.fullname" . }}-backend
-  labels:
-    generator: helm
-    deployedby: bansikah
-    date: {{ now | htmlDate }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -146,6 +142,12 @@ spec:
               value: {{ .Values.backend.port | quote }}
             - name: FRONTEND_URL
               value: {{ .Values.backend.frontend_url | quote }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.readinessProbe.path }}
+              port: {{ .Values.backend.readinessProbe.port }}
+            initialDelaySeconds: {{ .Values.backend.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.readinessProbe.periodSeconds }}
 EOF
 
     cat <<EOF > "$CHART_DIR/templates/deployment-frontend.yaml"
@@ -171,6 +173,7 @@ spec:
           env:
             - name: API_URL
               value: {{ .Values.frontend.api_url | quote }}
+          # Optional readiness probe for frontend if needed.
 EOF
 
     cat <<EOF > "$CHART_DIR/templates/service-backend.yaml"
@@ -207,13 +210,20 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "app.fullname" . }}-ingress
-#   annotations:
-#     nginx-ingress.kubernetes.io/rewrite-target: /
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
     - host: {{ include "app.ingress.hosts" . }}
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "app.fullname" . }}-backend
+                port:
+                  number: {{ include "app.backend.port" . }}
           - path: /
             pathType: Prefix
             backend:
@@ -221,13 +231,7 @@ spec:
                 name: {{ include "app.fullname" . }}-frontend
                 port:
                   number: {{ include "app.frontend.port" . }}
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "app.fullname" . }}-backend 
-                port:
-                  number: {{ include "app.backend.port" . }}
+  ingressClassName: "nginx" # if you're using a specific ingress class like Nginx
 {{- end -}}
 EOF
 
@@ -236,24 +240,29 @@ EOF
 replicaCount: 1
 
 backend:
-  image: "bansikah/express-backend:1.1"
+  image: "bansikah/express-backend:1.2"
   port: 5000
   frontend_url: "${FRONTEND_URL}"
+  readinessProbe:
+    path: /api/hello
+    port: 5000
+    initialDelaySeconds: 5
+    periodSeconds: 10
 
 frontend:
-  image: "bansikah/react-frontend:1.1"
-  port: 5000
+  image: "bansikah/react-frontend:1.2"
+  port: 80
   api_url: "${API_URL}"
 
 service:
   backend:
     enabled: true
     port: 5000
-    type: ClusterIP
+    type: NodePort
   frontend:
     enabled: true
     port: 80
-    type: ClusterIP
+    type: NodePort
 
 ingress:
   enabled: true
@@ -264,13 +273,18 @@ EOF
 replicaCount: 2
 
 backend:
-  image: "bansikah/express-backend:1.1"
+  image: "bansikah/express-backend:1.2"
   port: 5000
   frontend_url: "${FRONTEND_URL}"
+  readinessProbe:
+    path: /api/hello
+    port: 5000
+    initialDelaySeconds: 5
+    periodSeconds: 10
 
 frontend:
-  image: "bansikah/react-frontend:1.1"
-  port: 5000
+  image: "bansikah/react-frontend:1.2"
+  port: 80
   api_url: "${API_URL}"
 
 service:
@@ -297,6 +311,6 @@ kubectl get namespace $NAMESPACE >/dev/null 2>&1 || kubectl create namespace $NA
 if helm install $CHART_NAME $CHART_DIR --namespace $NAMESPACE --values "$CHART_DIR/values/values-$ENVIRONMENT.yaml"; then
     echo "Deployment successful."
 else
-    echo "Deployment failed."
+    echo "Deployment failed in `$$NAMESPACE`."
     exit 1
 fi
