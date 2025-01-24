@@ -42,3 +42,5 @@ kubectl get all -n bansikah-apps
 
 tf destroy --auto-approve
 ```
+
+
